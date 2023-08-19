@@ -4,6 +4,8 @@ classdef pop_importrandomdata < matlab.apps.AppBase
     properties (Access = public)
         UIFigure                        matlab.ui.Figure
         GridLayout                      matlab.ui.container.GridLayout
+        NameEditField                   matlab.ui.control.EditField
+        NameEditFieldLabel              matlab.ui.control.Label
         GridLayout2                     matlab.ui.container.GridLayout
         OkButton                        matlab.ui.control.Button
         CancelButton                    matlab.ui.control.Button
@@ -30,9 +32,9 @@ classdef pop_importrandomdata < matlab.apps.AppBase
     methods (Access = private)
 
         % Code that executes after component creation
-        function startupFcn(app, CallingApp)
+        function startupFcn(app, CallingApp, LTE)
             app.CallingApp = CallingApp;
-            app.LTE = CallingApp.LTE;
+            app.LTE = LTE;
         end
 
         % Button pushed function: OkButton
@@ -43,10 +45,12 @@ classdef pop_importrandomdata < matlab.apps.AppBase
             duration = app.SignaldurationsecSpinner.Value;
             % channels = app.NumberofchannelsSpinner.Value;
             data = randi([0, order-1], duration*fs, 1);
-            app.LTE.data = data;
+            app.LTE = app.LTE.setData(data);
             app.LTE.fs = fs;
+            app.LTE.name = app.NameEditField.Value;
             % update LTE from main app
             app.CallingApp.updateLTE(app.LTE);
+            app.CallingApp.setToolbarState("on","on","on");
             delete(app);
         end
 
@@ -71,7 +75,7 @@ classdef pop_importrandomdata < matlab.apps.AppBase
             % Create GridLayout
             app.GridLayout = uigridlayout(app.UIFigure);
             app.GridLayout.ColumnWidth = {'0x', '4x', '2x'};
-            app.GridLayout.RowHeight = {'0x', '1x', '1x', '1x', '1x', '1x', '1x', '1x'};
+            app.GridLayout.RowHeight = {'1x', '1x', '1x', '1x', '1x', '1x', '1x', '1x'};
             app.GridLayout.Padding = [50 20 50 20];
             app.GridLayout.BackgroundColor = [0.3294 0.7686 0.8196];
 
@@ -185,6 +189,24 @@ classdef pop_importrandomdata < matlab.apps.AppBase
             app.OkButton.Layout.Row = 1;
             app.OkButton.Layout.Column = 2;
             app.OkButton.Text = 'Ok';
+
+            % Create NameEditFieldLabel
+            app.NameEditFieldLabel = uilabel(app.GridLayout);
+            app.NameEditFieldLabel.FontSize = 18;
+            app.NameEditFieldLabel.FontWeight = 'bold';
+            app.NameEditFieldLabel.FontColor = [1 1 1];
+            app.NameEditFieldLabel.Layout.Row = 1;
+            app.NameEditFieldLabel.Layout.Column = 2;
+            app.NameEditFieldLabel.Text = 'Name';
+
+            % Create NameEditField
+            app.NameEditField = uieditfield(app.GridLayout, 'text');
+            app.NameEditField.CharacterLimits = [0 24];
+            app.NameEditField.HorizontalAlignment = 'center';
+            app.NameEditField.FontSize = 18;
+            app.NameEditField.Placeholder = 'rnd';
+            app.NameEditField.Layout.Row = 1;
+            app.NameEditField.Layout.Column = 3;
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
