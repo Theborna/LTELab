@@ -1,103 +1,201 @@
 classdef pop_importrandomdata < matlab.apps.AppBase
 
     % Properties that correspond to app components
-    properties (Access = private)
-        UIFigure          matlab.ui.Figure
-        GenerateButton    matlab.ui.control.Button
-        SNRSliderLabel    matlab.ui.control.Label
-        SNRSlider         matlab.ui.control.Slider
-        BERLabel          matlab.ui.control.Label
-        BERValue          matlab.ui.control.Label
-        SignalAxes        matlab.ui.control.UIAxes
+    properties (Access = public)
+        UIFigure                        matlab.ui.Figure
+        GridLayout                      matlab.ui.container.GridLayout
+        GridLayout2                     matlab.ui.container.GridLayout
+        OkButton                        matlab.ui.control.Button
+        CancelButton                    matlab.ui.control.Button
+        NumberofchannelsSpinner         matlab.ui.control.Spinner
+        NumberofchannelsSpinnerLabel    matlab.ui.control.Label
+        SignaldurationsecSpinner        matlab.ui.control.Spinner
+        SignaldurationsecSpinnerLabel   matlab.ui.control.Label
+        Starttime0defaultSpinner        matlab.ui.control.Spinner
+        StarttimeLabel                  matlab.ui.control.Label
+        DatasamplingrateHzSpinner       matlab.ui.control.Spinner
+        DatasamplingrateHzSpinnerLabel  matlab.ui.control.Label
+        ModulationorderSpinner          matlab.ui.control.Spinner
+        ModulationorderSpinnerLabel     matlab.ui.control.Label
     end
+
+    
+    properties (Access = private)
+        CallingApp          ltelab
+        LTE                 LTE_dataframe
+    end
+    
 
     % Callbacks that handle component events
     methods (Access = private)
 
         % Code that executes after component creation
-        function startupFcn(app)
-            % Initialize components or variables here
+        function startupFcn(app, CallingApp)
+            app.CallingApp = CallingApp;
+            app.LTE = CallingApp.LTE;
         end
 
-        % Button pushed function: GenerateButton
-        function GenerateButtonPushed(app, ~)
-            modulator = comm.QPSKModulator();
-            demodulator = comm.QPSKDemodulator();
-            SNRdB = app.SNRSlider.Value;
-            
-            data = randi([0 1], 1000, 1);
-            modulatedData = modulator(data);
-            noisyData = awgn(modulatedData, SNRdB, 'measured');
-            demodulatedData = demodulator(noisyData);
-            
-            BER = sum(data ~= demodulatedData) / length(data);
-            app.BERValue.Text = sprintf('BER: %.4f', BER);
-            
-            plot(app.SignalAxes, real(noisyData), imag(noisyData), '.');
-            xlabel(app.SignalAxes, 'I');
-            ylabel(app.SignalAxes, 'Q');
-            title(app.SignalAxes, 'Noisy QPSK Signal');
+        % Button pushed function: OkButton
+        function cb_ok(app, event)
+            fs = app.DatasamplingrateHzSpinner.Value;
+            order = app.ModulationorderSpinner.Value;
+            % start = app.Starttime0defaultSpinner.Value;
+            duration = app.SignaldurationsecSpinner.Value;
+            % channels = app.NumberofchannelsSpinner.Value;
+            data = randi([0, order-1], duration*fs, 1);
+            app.LTE.data = data;
+            app.LTE.fs = fs;
+            % update LTE from main app
+            app.CallingApp.updateLTE(app.LTE);
+            delete(app);
         end
 
-        % Value changed function: SNRSlider
-        function SNRSliderValueChanged(app, ~)
-            value = app.SNRSlider.Value;
-            app.SNRSliderLabel.Text = sprintf('SNR (dB): %.1f', value);
+        % Button pushed function: CancelButton
+        function cb_close(app, event)
+            delete(app);
         end
     end
 
-    % App initialization and construction
+    % Component initialization
     methods (Access = private)
+
+        % Create UIFigure and components
         function createComponents(app)
-            % Create UIFigure
-            app.UIFigure = uifigure;
-            app.UIFigure.Position = [100 100 640 480];
-            app.UIFigure.Name = 'LTE 4G Simulation App';
 
-            % Create GenerateButton
-            app.GenerateButton = uibutton(app.UIFigure, 'push');
-            app.GenerateButton.ButtonPushedFcn = createCallbackFcn(app, @GenerateButtonPushed, true);
-            app.GenerateButton.Position = [280 40 75 22];
-            app.GenerateButton.Text = 'Generate';
+            % Create UIFigure and hide until all components are created
+            app.UIFigure = uifigure('Visible', 'off');
+            app.UIFigure.Color = [0.3294 0.7686 0.8196];
+            app.UIFigure.Position = [100 100 653 348];
+            app.UIFigure.Name = 'MATLAB App';
 
-            % Create SNRSliderLabel
-            app.SNRSliderLabel = uilabel(app.UIFigure);
-            app.SNRSliderLabel.HorizontalAlignment = 'right';
-            app.SNRSliderLabel.Position = [160 68 56 22];
-            app.SNRSliderLabel.Text = 'SNR (dB):';
+            % Create GridLayout
+            app.GridLayout = uigridlayout(app.UIFigure);
+            app.GridLayout.ColumnWidth = {'0x', '4x', '2x'};
+            app.GridLayout.RowHeight = {'0x', '1x', '1x', '1x', '1x', '1x', '1x', '1x'};
+            app.GridLayout.Padding = [50 20 50 20];
+            app.GridLayout.BackgroundColor = [0.3294 0.7686 0.8196];
 
-            % Create SNRSlider
-            app.SNRSlider = uislider(app.UIFigure);
-            app.SNRSlider.Limits = [-10 20];
-            app.SNRSlider.MajorTicks = [-10 -5 0 5 10 15 20];
-            app.SNRSlider.MajorTickLabels = {'-10', '-5', '0', '5', '10', '15', '20'};
-            app.SNRSlider.ValueChangedFcn = createCallbackFcn(app, @SNRSliderValueChanged, true);
-            app.SNRSlider.Position = [229 77 200 3];
-            app.SNRSlider.Value = 10;
+            % Create ModulationorderSpinnerLabel
+            app.ModulationorderSpinnerLabel = uilabel(app.GridLayout);
+            app.ModulationorderSpinnerLabel.FontSize = 18;
+            app.ModulationorderSpinnerLabel.FontWeight = 'bold';
+            app.ModulationorderSpinnerLabel.FontColor = [1 1 1];
+            app.ModulationorderSpinnerLabel.Layout.Row = 2;
+            app.ModulationorderSpinnerLabel.Layout.Column = 2;
+            app.ModulationorderSpinnerLabel.Text = 'Modulation order';
 
-            % Create BERLabel
-            app.BERLabel = uilabel(app.UIFigure);
-            app.BERLabel.Position = [230 120 55 22];
-            app.BERLabel.Text = 'Bit Error Rate:';
+            % Create ModulationorderSpinner
+            app.ModulationorderSpinner = uispinner(app.GridLayout);
+            app.ModulationorderSpinner.Limits = [0 Inf];
+            app.ModulationorderSpinner.ValueDisplayFormat = '%.0f';
+            app.ModulationorderSpinner.HorizontalAlignment = 'center';
+            app.ModulationorderSpinner.FontWeight = 'bold';
+            app.ModulationorderSpinner.Layout.Row = 2;
+            app.ModulationorderSpinner.Layout.Column = 3;
 
-            % Create BERValue
-            app.BERValue = uilabel(app.UIFigure);
-            app.BERValue.Position = [295 120 100 22];
-            app.BERValue.Text = '0.0000';
+            % Create DatasamplingrateHzSpinnerLabel
+            app.DatasamplingrateHzSpinnerLabel = uilabel(app.GridLayout);
+            app.DatasamplingrateHzSpinnerLabel.FontSize = 18;
+            app.DatasamplingrateHzSpinnerLabel.FontWeight = 'bold';
+            app.DatasamplingrateHzSpinnerLabel.FontColor = [1 1 1];
+            app.DatasamplingrateHzSpinnerLabel.Layout.Row = 3;
+            app.DatasamplingrateHzSpinnerLabel.Layout.Column = 2;
+            app.DatasamplingrateHzSpinnerLabel.Text = 'Data sampling rate (Hz)';
 
-            % Create SignalAxes
-            app.SignalAxes = uiaxes(app.UIFigure);
-            title(app.SignalAxes, 'Noisy QPSK Signal');
-            xlabel(app.SignalAxes, 'I');
-            ylabel(app.SignalAxes, 'Q');
-            app.SignalAxes.Position = [40 170 560 280];
+            % Create DatasamplingrateHzSpinner
+            app.DatasamplingrateHzSpinner = uispinner(app.GridLayout);
+            app.DatasamplingrateHzSpinner.Limits = [0 Inf];
+            app.DatasamplingrateHzSpinner.ValueDisplayFormat = '%.0f';
+            app.DatasamplingrateHzSpinner.HorizontalAlignment = 'center';
+            app.DatasamplingrateHzSpinner.FontWeight = 'bold';
+            app.DatasamplingrateHzSpinner.Layout.Row = 3;
+            app.DatasamplingrateHzSpinner.Layout.Column = 3;
+
+            % Create StarttimeLabel
+            app.StarttimeLabel = uilabel(app.GridLayout);
+            app.StarttimeLabel.FontSize = 18;
+            app.StarttimeLabel.FontColor = [1 1 1];
+            app.StarttimeLabel.Layout.Row = 4;
+            app.StarttimeLabel.Layout.Column = 2;
+            app.StarttimeLabel.Text = 'Start time (0 -> default)';
+
+            % Create Starttime0defaultSpinner
+            app.Starttime0defaultSpinner = uispinner(app.GridLayout);
+            app.Starttime0defaultSpinner.Limits = [0 Inf];
+            app.Starttime0defaultSpinner.ValueDisplayFormat = '%.0f';
+            app.Starttime0defaultSpinner.HorizontalAlignment = 'center';
+            app.Starttime0defaultSpinner.FontWeight = 'bold';
+            app.Starttime0defaultSpinner.Layout.Row = 4;
+            app.Starttime0defaultSpinner.Layout.Column = 3;
+
+            % Create SignaldurationsecSpinnerLabel
+            app.SignaldurationsecSpinnerLabel = uilabel(app.GridLayout);
+            app.SignaldurationsecSpinnerLabel.FontSize = 18;
+            app.SignaldurationsecSpinnerLabel.FontColor = [1 1 1];
+            app.SignaldurationsecSpinnerLabel.Layout.Row = 5;
+            app.SignaldurationsecSpinnerLabel.Layout.Column = 2;
+            app.SignaldurationsecSpinnerLabel.Text = 'Signal duration (sec)';
+
+            % Create SignaldurationsecSpinner
+            app.SignaldurationsecSpinner = uispinner(app.GridLayout);
+            app.SignaldurationsecSpinner.Limits = [0 Inf];
+            app.SignaldurationsecSpinner.ValueDisplayFormat = '%.0f';
+            app.SignaldurationsecSpinner.HorizontalAlignment = 'center';
+            app.SignaldurationsecSpinner.FontWeight = 'bold';
+            app.SignaldurationsecSpinner.Layout.Row = 5;
+            app.SignaldurationsecSpinner.Layout.Column = 3;
+
+            % Create NumberofchannelsSpinnerLabel
+            app.NumberofchannelsSpinnerLabel = uilabel(app.GridLayout);
+            app.NumberofchannelsSpinnerLabel.FontSize = 18;
+            app.NumberofchannelsSpinnerLabel.FontWeight = 'bold';
+            app.NumberofchannelsSpinnerLabel.FontColor = [1 1 1];
+            app.NumberofchannelsSpinnerLabel.Layout.Row = 6;
+            app.NumberofchannelsSpinnerLabel.Layout.Column = 2;
+            app.NumberofchannelsSpinnerLabel.Text = 'Number of channels';
+
+            % Create NumberofchannelsSpinner
+            app.NumberofchannelsSpinner = uispinner(app.GridLayout);
+            app.NumberofchannelsSpinner.Limits = [1 Inf];
+            app.NumberofchannelsSpinner.ValueDisplayFormat = '%.0f';
+            app.NumberofchannelsSpinner.HorizontalAlignment = 'center';
+            app.NumberofchannelsSpinner.FontWeight = 'bold';
+            app.NumberofchannelsSpinner.Layout.Row = 6;
+            app.NumberofchannelsSpinner.Layout.Column = 3;
+            app.NumberofchannelsSpinner.Value = 1;
+
+            % Create GridLayout2
+            app.GridLayout2 = uigridlayout(app.GridLayout);
+            app.GridLayout2.RowHeight = {'1x'};
+            app.GridLayout2.Padding = [0 0 0 0];
+            app.GridLayout2.Layout.Row = 8;
+            app.GridLayout2.Layout.Column = 3;
+            app.GridLayout2.BackgroundColor = [0.3294 0.7686 0.8196];
+
+            % Create CancelButton
+            app.CancelButton = uibutton(app.GridLayout2, 'push');
+            app.CancelButton.ButtonPushedFcn = createCallbackFcn(app, @cb_close, true);
+            app.CancelButton.Layout.Row = 1;
+            app.CancelButton.Layout.Column = 1;
+            app.CancelButton.Text = 'Cancel';
+
+            % Create OkButton
+            app.OkButton = uibutton(app.GridLayout2, 'push');
+            app.OkButton.ButtonPushedFcn = createCallbackFcn(app, @cb_ok, true);
+            app.OkButton.Layout.Row = 1;
+            app.OkButton.Layout.Column = 2;
+            app.OkButton.Text = 'Ok';
+
+            % Show the figure after all components are created
+            app.UIFigure.Visible = 'on';
         end
     end
 
+    % App creation and deletion
     methods (Access = public)
 
         % Construct app
-        function app = pop_importrandomdata
+        function app = pop_importrandomdata(varargin)
 
             % Create UIFigure and components
             createComponents(app)
@@ -106,11 +204,18 @@ classdef pop_importrandomdata < matlab.apps.AppBase
             registerApp(app, app.UIFigure)
 
             % Execute the startup function
-            runStartupFcn(app, @startupFcn)
+            runStartupFcn(app, @(app)startupFcn(app, varargin{:}))
 
             if nargout == 0
                 clear app
             end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
         end
     end
 end
