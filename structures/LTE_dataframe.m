@@ -16,6 +16,8 @@ classdef LTE_dataframe
         channel
         modulationOrder
         fs
+        messageLen
+        codeLen
     end
     
     methods
@@ -32,6 +34,8 @@ classdef LTE_dataframe
             obj.modulatedData = NaN(1);
             obj.receivedData = NaN(1);
             obj.fs = 44100;
+            obj.messageLen = 11;
+            obj.codeLen = 15;
         end
         
         function obj = modulate(obj)
@@ -46,7 +50,18 @@ classdef LTE_dataframe
             obj.receivedData(end:numel(obj.data)) = 0;
         end
 
+        function obj = encode(obj)
+            obj.data = encode(obj.data,15,11,'hamming/binary');
+        end
+
+        function obj = decode(obj)
+            obj.receivedData = decode(obj.receivedData,15,11,...
+                'hamming/binary');
+        end
+
         function lte = setData(lte, data, bps)
+%             l = numel(data);
+%             data = data(1:(floor(l/obj.messageLen)*lte.messageLen));
             lte.data = data;
             lte.history{end+1} = data;
             lte.bps = bps;
